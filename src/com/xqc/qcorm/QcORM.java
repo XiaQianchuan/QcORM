@@ -202,7 +202,7 @@ public class QcORM {
 	 * @throws SQLException 数据库操作异常
 	 */
 	public Object getSingleFiled(String sql, Object... args) throws SQLException {
-		showSql(sql);
+		showSql(sql, args);
 		Object result = null;
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -237,7 +237,7 @@ public class QcORM {
 	 * @throws SQLException 数据库操作异常
 	 */
 	public String[] getSingleColumn(String sql, Object... args) throws SQLException {
-		showSql(sql);
+		showSql(sql, args);
 		String[] array;
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -270,7 +270,7 @@ public class QcORM {
 	 * @throws SQLException 数据库操作异常
 	 */
 	public String[][] getAllByTDArray(String sql, Object... args) throws SQLException {
-		showSql(sql);
+		showSql(sql, args);
 		String[][] result = null;
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -430,6 +430,40 @@ public class QcORM {
 	}
 	
 	/**
+	 * 删除对象
+	 * @param obj
+	 * @return 保存删除的ID
+	 * @throws SQLException
+	 * @throws QcORMException 
+	 */
+	public int deleteObject(Object obj, String qql, Object... args) throws SQLException, QcORMException {
+		String tabName = qcormConf.getString(obj.getClass().getName());
+		StringBuffer deleteSql = new StringBuffer("DELETE FROM `"+tabName+"`");
+		Boolean fieldFlag = false;
+		String[] params = qql.split("\\s?,\\s?");
+		StringArray sa = new StringArray();
+		for(String s : params) {
+			sa.add(s.split("\\s?=\\s?")[0]);
+		}
+		Iterator<Entry<String, Object>> iterator = getObjectDatabase(obj,sa.getArray()).entrySet().iterator();
+		while(iterator.hasNext()) {
+			Map.Entry<String, Object> entry = (Map.Entry<String, Object>) iterator.next();
+			String colName = entry.getKey();
+			Object colVal = entry.getValue();
+			if(fieldFlag) deleteSql.append(",");
+			deleteSql.append("`" + colName + "`=");
+			if(colVal instanceof String || colVal instanceof Timestamp) {
+				deleteSql.append("'"+colVal.toString()+"'");
+			} else {
+				deleteSql.append(colVal.toString());
+			}
+			fieldFlag = true;
+		}
+		deleteSql.append(analyseQql(obj.getClass(), qql));
+		return execute(deleteSql.toString(), args);
+	}
+	
+	/**
 	 * 获取对象数据库结构
 	 * @param obj
 	 * @return Map<key:数据库字段名,value:数据库值>
@@ -491,7 +525,7 @@ public class QcORM {
 	 * @throws SQLException 数据库操作异常
 	 */
 	public int insert(String sql, Object... args) throws SQLException {
-		showSql(sql);
+		showSql(sql, args);
 		int result = 0;
 		Connection conn = null;
 		PreparedStatement ps = null;
@@ -514,7 +548,7 @@ public class QcORM {
 	}
 	
 	public int execute(String sql, Object... args) throws SQLException {
-		showSql(sql); //显示调试SQL
+		showSql(sql, args); //显示调试SQL
 		int count = -1;
 		PreparedStatement ps = null;
 		Connection conn = null;
@@ -700,7 +734,12 @@ public class QcORM {
 	 * 显示调试SQL
 	 * @param sql
 	 */
-	private void showSql(String sql) {
-		if(DBHelper.dbcfg.containsKey("qcorm.showSql") && Boolean.parseBoolean(DBHelper.dbcfg.getString("qcorm.showSql"))) System.out.println("[DEBUG INFO]" + sql);
+	private void showSql(String sql, Object... params) {
+		if(DBHelper.dbcfg.containsKey("qcorm.showSql") && Boolean.parseBoolean(DBHelper.dbcfg.getString("qcorm.showSql"))){
+			if(params.length > 0) {
+				sql = String.format(sql.replace("?","%s"), params);
+			}
+			System.out.println("[QCORM_SQL]" + sql);
+		}
 	}
 }
