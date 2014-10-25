@@ -737,7 +737,9 @@ public class QcORM {
 	private void showSql(String sql, Object... params) {
 		if(DBHelper.dbcfg.containsKey("qcorm.showSql") && Boolean.parseBoolean(DBHelper.dbcfg.getString("qcorm.showSql"))){
 			if(params.length > 0) {
-				sql = String.format(sql.replace("?","%s"), params);
+				try {
+					sql = String.format(sql.replace("?","%s"), params);
+				} catch (Exception e) {}				
 			}
 			System.out.println("[QCORM_SQL]" + sql);
 		}
